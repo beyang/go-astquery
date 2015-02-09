@@ -11,6 +11,7 @@ type Filter interface {
 	Filter(node ast.Node) bool
 }
 
+// SetFilter matches nodes whose names are in the specified set of names.
 type SetFilter struct {
 	// Names is a set of names that match the filter
 	Names []string
@@ -35,6 +36,7 @@ func (f SetFilter) Filter(node ast.Node) bool {
 	return reflect.TypeOf(node) == f.Type && matched
 }
 
+// RegexpFilter matches nodes whose names match a regular expression.
 type RegexpFilter struct {
 	// Pattern is a regular expression matching AST node names
 	Pattern *regexp.Regexp
@@ -51,6 +53,7 @@ func (s RegexpFilter) Filter(node ast.Node) bool {
 	return reflect.TypeOf(node) == s.Type && s.Pattern.MatchString(nodeName)
 }
 
+// MethodFilter matches method declaration nodes that have the specified receiver type.
 type MethodFilter struct {
 	// ReceiverType is the name of the receiver's type (without the '*' if a pointer).
 	ReceiverType string
@@ -79,10 +82,14 @@ func (f MethodFilter) Filter(node ast.Node) bool {
 	}
 }
 
+// FilterFunc lets you specify a function for custom filtering logic.
 type FilterFunc func(node ast.Node) bool
 
 func (f FilterFunc) Filter(node ast.Node) bool { return f(node) }
 
+// Find recursively searches the AST nodes passed as the first argument and returns all
+// AST nodes that match the filter. It does not descend into matching nodes for additional
+// matching nodes.
 func Find(nodes []ast.Node, filter Filter) []ast.Node {
 	var found []ast.Node
 	for _, node := range nodes {
