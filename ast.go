@@ -1,10 +1,10 @@
 package astquery
 
 import (
+	"fmt"
 	"go/ast"
+	"reflect"
 	"regexp"
-
-	"code.google.com/p/go/src/pkg/reflect"
 )
 
 type Filter interface {
@@ -37,7 +37,7 @@ func (f SetFilter) Filter(node ast.Node) bool {
 
 type RegexpFilter struct {
 	// Pattern is a regular expression matching AST node names
-	Pattern regexp.Regexp
+	Pattern *regexp.Regexp
 
 	// Type is the type of AST node to filter for
 	Type reflect.Type
@@ -50,6 +50,38 @@ func (s RegexpFilter) Filter(node ast.Node) bool {
 	}
 	return reflect.TypeOf(node) == s.Type && s.Pattern.MatchString(nodeName)
 }
+
+type MethodFilter struct {
+	// ReceiverType is the name of the receiver's type (without the '*' if a pointer).
+	ReceiverType string
+
+	// ExportedOnly is if the filter should select only exported methods.
+	ExportedOnly bool
+}
+
+func (f MethodFilter) Filter(node ast.Node) bool {
+	switch node := node.(type) {
+	case *ast.FuncDecl:
+		recv := node.Recv
+		if recv == nil || len(recv.List) != 1 {
+			return false // not a method
+		}
+		recvType, _ := typeName(recv.List[0].Type)
+		if recvType != f.ReceiverType {
+			return false // receiver doesn't match
+		}
+		if f.ExportedOnly && !node.Name.IsExported() {
+			return false // not exported
+		}
+		return true
+	default:
+		return false
+	}
+}
+
+type FilterFunc func(node ast.Node) bool
+
+func (f FilterFunc) Filter(node ast.Node) bool { return f(node) }
 
 func Find(nodes []ast.Node, filter Filter) []ast.Node {
 	var found []ast.Node
@@ -83,16 +115,24 @@ func (v visitFunc) Visit(node ast.Node) ast.Visitor {
 	}
 }
 
+// getName gets the name of a node's identifier. For TypeSpecs and FuncDecls, it looks at the .Name field. For
+// SelectorExpr's, it looks at the Sel field.
 func getName(n ast.Node) (name string, exists bool) {
-	nameValue, exists := getStructField(n, "Name")
-	if !exists {
+	var ident_ interface{}
+	if idt, exists := getStructField(n, "Name"); exists {
+		ident_ = idt
+	} else if idt, exists := getStructField(n, "Sel"); exists {
+		ident_ = idt
+	}
+	if ident_ == nil {
 		return "", false
 	}
-	nodeName, isStr := nameValue.(string)
-	if !isStr {
+
+	nodeName, isIdent := ident_.(*ast.Ident)
+	if !isIdent {
 		return "", false
 	}
-	return nodeName, true
+	return nodeName.Name, true
 }
 
 // getStructField returns the value of v's field with the given name
@@ -110,4 +150,16 @@ func getStructField(v interface{}, field string) (fieldVal interface{}, exists b
 		return nil, false
 	}
 	return fv.Interface(), true
+}
+
+// typeName returns the name of the type referenced by typeExpr.
+func typeName(typeExpr ast.Expr) (string, error) {
+	switch typeExpr := typeExpr.(type) {
+	case *ast.StarExpr:
+		return typeName(typeExpr.X)
+	case *ast.Ident:
+		return typeExpr.Name, nil
+	default:
+		return "", fmt.Errorf("expr %+v is not a type expression", typeExpr)
+	}
 }
