@@ -43,7 +43,7 @@ func TestRegexpFilter(t *testing.T) {
 	checkNodesExpected(t, expServiceTypes, serviceTypes)
 }
 
-func TestFilterChildren(t *testing.T) {
+func TestNestedFilters(t *testing.T) {
 	servicePkg := getTestPkg(t)
 
 	type expMethodInfo struct {
