@@ -84,7 +84,7 @@ func TestNestedFilters(t *testing.T) {
 			t.Fatalf("expected to get 1 AST node back, but got %d: %v", len(service_), service_)
 		}
 		service := service_[0]
-		serviceName, _ := getName(service)
+		serviceName, _ := GetName(service)
 
 		expMethods := make([]nodeInfo, len(test.methods))
 		for i, m := range test.methods {
@@ -117,7 +117,7 @@ func TestNestedFilters(t *testing.T) {
 
 func nodeInfoFromNode(node ast.Node) nodeInfo {
 	var info nodeInfo
-	if name, nameExists := getName(node); nameExists {
+	if name, nameExists := GetName(node); nameExists {
 		info.Name = name
 	}
 	info.Type = reflect.TypeOf(node)

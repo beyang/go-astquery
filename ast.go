@@ -21,7 +21,7 @@ type SetFilter struct {
 }
 
 func (f SetFilter) Filter(node ast.Node) bool {
-	nodeName, exists := getName(node)
+	nodeName, exists := GetName(node)
 	if !exists {
 		return false
 	}
@@ -46,7 +46,7 @@ type RegexpFilter struct {
 }
 
 func (s RegexpFilter) Filter(node ast.Node) bool {
-	nodeName, exists := getName(node)
+	nodeName, exists := GetName(node)
 	if !exists {
 		return false
 	}
@@ -122,9 +122,9 @@ func (v visitFunc) Visit(node ast.Node) ast.Visitor {
 	}
 }
 
-// getName gets the name of a node's identifier. For TypeSpecs and FuncDecls, it looks at the .Name field. For
+// GetName gets the name of a node's identifier. For TypeSpecs and FuncDecls, it looks at the .Name field. For
 // SelectorExpr's, it looks at the Sel field.
-func getName(n ast.Node) (name string, exists bool) {
+func GetName(n ast.Node) (name string, exists bool) {
 	var ident_ interface{}
 	if idt, exists := getStructField(n, "Name"); exists {
 		ident_ = idt
